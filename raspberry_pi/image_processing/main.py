@@ -1,72 +1,79 @@
 import cv2 as cv
 import numpy as np
 
-from get_lines import get_lines
+from display import display
 from get_qr import get_qr
-
 
 def main():
 	canny_threshold_hard: int = 0
 	canny_threshold_soft: int = 0
-	line_detection_threshold: int = 0
-	min_line_length: int = 0
-	max_line_gap: int = 0
+	contour_size_threshold: int = 0
 	
-	def on_canny_threshold_hard_new_value( new_value: int ):
+	def on_canny_threshold_hard_new_value(
+		new_value: int,
+	):
 		nonlocal canny_threshold_hard
 		canny_threshold_hard = new_value
 	
-	def on_canny_threshold_soft_new_value( new_value: int ):
+	def on_canny_threshold_soft_new_value(
+		new_value: int,
+	):
 		nonlocal canny_threshold_soft
 		canny_threshold_soft = new_value
 	
-	def on_line_detection_threshold_new_value( new_value: int ):
-		nonlocal line_detection_threshold
-		line_detection_threshold = new_value
-	
-	def on_min_line_length_new_value( new_value: int ):
-		nonlocal min_line_length
-		min_line_length = new_value
-	
-	def on_max_line_gap_new_value( new_value: int ):
-		nonlocal max_line_gap
-		max_line_gap = new_value
+	def on_contour_size_threshold_new_value(
+		new_value: int,
+	):
+		nonlocal contour_size_threshold
+		contour_size_threshold = new_value
 	
 	video_capture = cv.VideoCapture( 0 )
-	cv.namedWindow( 'Main window' )
+	cv.namedWindow( 'Display window' )
 	cv.namedWindow( 'Settings window' )
 	
 	cv.createTrackbar( 'CnyThrHrd', 'Settings window', 127, 255, on_canny_threshold_hard_new_value )
 	cv.createTrackbar( 'CnyThrSft', 'Settings window', 63, 255, on_canny_threshold_soft_new_value )
-	cv.createTrackbar( 'LnDtctThr', 'Settings window', 30, 255, on_line_detection_threshold_new_value )
-	cv.createTrackbar( 'MnLnLngth', 'Settings window', 100, 500, on_min_line_length_new_value )
-	cv.createTrackbar( 'MxLineGap', 'Settings window', 30, 100, on_max_line_gap_new_value )
+	cv.createTrackbar( 'CntrSzThr', 'Settings window', 0, 10000, on_contour_size_threshold_new_value )
 	
 	while cv.waitKey( 10 ) != ord( 'q' ):
 		success, frame = video_capture.read()
 		if not success:
 			break
 		
-		canny, detected_lines = get_lines(frame, canny_threshold_hard, canny_threshold_soft, line_detection_threshold, min_line_length, max_line_gap)
+		frame_gray = cv.cvtColor( frame, cv.COLOR_BGR2GRAY )
+		frame_gray_blurred = cv.GaussianBlur( frame_gray, (5, 5), 0 )
+		original_edges = cv.Canny( frame_gray_blurred, canny_threshold_soft, canny_threshold_hard )
+		edges = cv.dilate( original_edges, np.ones( (3, 3), np.uint8 ), iterations = 1 )
+		all_contours, _ = cv.findContours( edges, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE )
+		contours = []
+		for contour in all_contours:
+			if cv.contourArea( contour ) > contour_size_threshold:
+				contours.append( contour )
+		shapes = []
+		for contour in contours:
+			perimeter = cv.arcLength( contour, True )
+			shape = cv.approxPolyDP( contour, 0.02 * perimeter, True )
+			shapes.append( shape )
+		rectangles = []
+		for shape in shapes:
+			if len( shape ) == 4:
+				rectangles.append( shape )
+		dimensions_list = []
+		for rectangle in rectangles:
+			rectangle_info = cv.minAreaRect( rectangle )
+			width, height = rectangle_info[1]
+			dimensions = [width, height]
+			dimensions.sort( reverse = True )
+			dimensions_list.append( dimensions )
 		
-		detected_lines_image = np.zeros_like( frame )
-		if detected_lines is not None:
-			for line in detected_lines:
-				x1, y1, x2, y2 = line[0]
-				cv.line( detected_lines_image, (x1, y1), (x2, y2), (0, 0, 255), 2 )
-		
-		display_image = np.hstack( (
-			frame,
-			cv.cvtColor(canny,cv.COLOR_GRAY2BGR),
-			detected_lines_image
-		) )
-		cv.imshow( 'Main window', display_image )
-		
-		print(get_qr(frame))
+		display( frame, edges, contours, shapes, rectangles )
+		print('Dimensions:')
+		for dimensions in dimensions_list:
+			print(f'{dimensions[0]} x {dimensions[1]}')
+		print( get_qr( frame ) )
 	
 	video_capture.release()
 	cv.destroyAllWindows()
-
 
 if __name__ == "__main__":
 	main()
