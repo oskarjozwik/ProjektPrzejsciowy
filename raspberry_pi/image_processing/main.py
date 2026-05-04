@@ -67,10 +67,13 @@ def main():
 			dimensions_list.append( dimensions )
 		
 		display( frame, edges, contours, shapes, rectangles )
-		print('Dimensions:')
-		for dimensions in dimensions_list:
-			print(f'{dimensions[0]} x {dimensions[1]}')
-		print( get_qr( frame ) )
+		if len( dimensions_list ) > 0:
+			print('Dimensions:')
+			for dimensions in dimensions_list:
+				print(f'{dimensions[0]} x {dimensions[1]}')
+		qr_code = get_qr( frame )
+		if qr_code != '':
+			print( f'QR code: {qr_code}' )
 	
 	video_capture.release()
 	cv.destroyAllWindows()
