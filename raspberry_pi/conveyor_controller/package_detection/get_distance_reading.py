@@ -1,2 +1,3 @@
 def get_distance_reading() -> float:
-	return 0.1 #to be implemented
+    print('Warning: get_distance_reading() is not implemented and returns a constant value')
+    return 0.1

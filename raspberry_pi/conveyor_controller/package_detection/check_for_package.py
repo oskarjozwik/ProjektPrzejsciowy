@@ -1,5 +1,6 @@
 from camera.process_camera_image import process_camera_image
 from package_detection.get_distance_reading import get_distance_reading
+from package_detection.get_mass_measurement import get_mass_measurement
 from package_detection.px_to_meters import px_to_meters
 
 class BoxDimensions:
@@ -9,9 +10,7 @@ class BoxDimensions:
 		y: float,
 		z: float,
 	):
-		self.x = x
-		self.y = y
-		self.z = z
+		self.x, self.y, self.z = sorted([x, y, z])
 
 class PackageCheckResult:
 	def __init__(
@@ -20,11 +19,25 @@ class PackageCheckResult:
 		qr_detected: bool = True,
 		box_dimensions: BoxDimensions = BoxDimensions( 0, 0, 0 ),
 		qr_code: int = 0,
+		mass: float = 0
 	):
 		self.box_detected = box_detected
 		self.qr_detected = qr_detected
 		self.box_dimensions = box_dimensions
 		self.qr_code = qr_code
+		self.mass = mass
+
+	def print(self):
+		if not self.box_detected:
+			print('Box not detected!')
+		else:
+			print(
+				f'Box detected! Dimensions: \t{int(self.box_dimensions.x * 1000)}mm x \t{int(self.box_dimensions.y * 1000)}mm x \t{int(self.box_dimensions.z * 1000)}mm x')
+
+		if not self.qr_detected:
+			print('QR not detected!')
+		else:
+			print(f'QR detected! Code: {self.qr_code}')
 
 def check_for_package() -> PackageCheckResult:
 	camera_image_processing_result = process_camera_image()
@@ -52,5 +65,6 @@ def check_for_package() -> PackageCheckResult:
 	return PackageCheckResult(
 		box_dimensions = box_dimensions,
 		qr_detected = camera_image_processing_result.qr_detected,
-		qr_code = camera_image_processing_result.qr_code
+		qr_code = camera_image_processing_result.qr_code,
+		mass = get_mass_measurement()
 	)
