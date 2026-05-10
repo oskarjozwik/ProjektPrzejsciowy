@@ -17,7 +17,7 @@ stateDiagram-v2
     [*] --> s0
     s0 --> s1: Stop signal
     
-    WyborBramki{
+    state WyborBramki{
         s3 --> s4
         s4 --> s5
     } 
