@@ -24,7 +24,7 @@ stateDiagram-v2
     state s2 {
         WyborBramki
         --
-    `   s7
+        s7
         --
         s8      
     }
