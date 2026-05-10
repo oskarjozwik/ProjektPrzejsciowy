@@ -4,17 +4,21 @@ stateDiagram-v2
 %% definiowanie stanóœ
     s0 : PowerOn
     s1: Stop
-    s2: 
-    s3: 
-
+    s2: Get Package Info
+    s3: Read QR
+    s4: SQL Query
+    s5: Determine gate
+    
+    
 
     s100: Error
     s101: ClearError
 %% opis relacji
     [*] --> s0
     s0 --> s1: Stop signal
-    Still --> Moving
-    Moving --> Still %% another comment
-    Moving --> Crash
-    Crash --> [*]
+    
+    WyborBramki{
+        s3 --> s4
+        s4 --> s5
+    } 
 ```
