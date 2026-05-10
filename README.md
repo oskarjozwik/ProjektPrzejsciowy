@@ -1,3 +1,4 @@
+```mermaid
 stateDiagram-v2
     [*] --> Still
     Still --> [*]
@@ -6,3 +7,4 @@ stateDiagram-v2
     Moving --> Still %% another comment
     Moving --> Crash
     Crash --> [*]
+```
