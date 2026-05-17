@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Data entry</title>
+</head>
+<body>
+    <h1>Package information form</h1>
+    <p>Please complete the form below by providing information about your package.</p>
+
+    <form action="#" method="POST">
+        <div>
+            <label for="category_dropdown">Select Category:</label>
+            <select id="category_dropdown" name="category_dropdown">
+                <option>Small</option>
+                <option>Medium</option>
+                <option>Medium+</option>
+                <option>Large</option>
+                <option>Large+</option>
+            </select>
+        </div>
+        <br>
+        <div>
+            <label for="destination_input">Enter Destination Address:</label>
+            <input type="text" id="destination_input" name="destination_input">
+        </div>
+        <br>
+        <button type="submit">Confirm and generate QR code</button>
+    </form>
+</body>
+</html>

@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8">
+		<title>Data entry</title>
+	</head>
+	<body>
+		<h1>Data submitted.</h1>
+		<table>
+			<tr>
+				<td><strong>Package Category:</strong></td>
+				<td>{{ category.name }}</td>
+			</tr>
+			<tr>
+				<td><strong>Destination Address:</strong></td>
+				<td>{{ destination }}</td>
+			</tr>
+		</table>
+		<br>
+		
+		<p>Your QR code is {{ qr_code }}</p>
+		<img style="align: center;" src="{{ url_for('static', filename='latest_qr.png') }}" alt="Generated QR code image">
+		<br>
+		<a href="/">
+			<button type="button">Enter another package</button>
+		</a>
+	</body>
+</html>
