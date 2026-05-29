@@ -3,6 +3,8 @@ from package_detection.get_distance_reading import get_distance_reading
 from package_detection.get_mass_measurement import get_mass_measurement
 from package_detection.px_to_meters import px_to_meters
 
+distance_sensor_distance_from_base: float = 0.25
+
 class BoxDimensions:
 	def __init__(
 		self,
@@ -59,7 +61,7 @@ def check_for_package() -> PackageCheckResult:
 			dimension_px = camera_image_processing_result.contour_dimensions.y,
 			distance = distance_reading
 		),
-		z = distance_reading
+		z = distance_sensor_distance_from_base - distance_reading
 	)
 	
 	return PackageCheckResult(
