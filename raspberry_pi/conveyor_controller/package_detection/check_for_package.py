@@ -4,6 +4,8 @@ from package_detection.get_mass_measurement import get_mass_measurement
 from package_detection.px_to_meters import px_to_meters
 
 distance_sensor_distance_from_base: float = 0.25
+box_dimensions_acceptable_difference: float = 1e-3
+mass_acceptable_difference = 1e-3
 
 class BoxDimensions:
 	def __init__(
@@ -28,7 +30,24 @@ class PackageCheckResult:
 		self.box_dimensions = box_dimensions
 		self.qr_code = qr_code
 		self.mass = mass
-
+	
+	def isSimilarTo(self, otherResult: PackageCheckResult) -> bool:
+		if self.box_detected != otherResult.box_detected:
+			return False
+		if self.qr_detected != otherResult.qr_detected:
+			return False
+		if self.qr_code != otherResult.qr_code:
+			return False
+		if abs(self.mass - otherResult.mass) > mass_acceptable_difference:
+			return False
+		if abs(self.box_dimensions.x - otherResult.box_dimensions.x) > box_dimensions_acceptable_difference:
+			return False
+		if abs(self.box_dimensions.y - otherResult.box_dimensions.y) > box_dimensions_acceptable_difference:
+			return False
+		if abs(self.box_dimensions.z - otherResult.box_dimensions.z) > box_dimensions_acceptable_difference:
+			return False
+		return True
+	
 	def print(self):
 		if not self.box_detected:
 			print('Box not detected!')

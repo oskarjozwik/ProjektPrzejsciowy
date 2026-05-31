@@ -9,12 +9,24 @@ gate_destinations: list[str] = [
 	"Poznań", "Warszawa",
 ]
 
+similar_package_checks_required: int = 5
+
 def main():
 	is_conveyor_empty: bool = True
 	
 	while cv.waitKey( 10 ) != ord( 'q' ):
 		if is_conveyor_empty:
-			package_check_result = check_for_package()
+			
+			consistency_satisfied: bool = False
+			while not consistency_satisfied:
+				previous_package_check_result = check_for_package()
+				for check_idx in range(0, similar_package_checks_required):
+					package_check_result = check_for_package()
+					if not package_check_result.isSimilarTo(previous_package_check_result):
+						break
+					if check_idx == similar_package_checks_required - 1:
+						consistency_satisfied = True
+			
 			package_check_result.print()
 			
 			if package_check_result.box_detected and package_check_result.qr_detected:
