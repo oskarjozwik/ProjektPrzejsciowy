@@ -26,11 +26,9 @@ def main():
 			frame = picam.capture_array()
 			data, points, _ = detector.detectAndDecode(frame)
 
-			# RGB (picamera2) -> BGR for correct colors in OpenCV's display.
-			view = cv.cvtColor(frame, cv.COLOR_RGB2BGR)
 			if points is not None and len(points) > 0:
 				polygon = np.intp(points).reshape(-1, 2)
-				cv.polylines(view, [polygon], True, (0, 255, 0), 2)
+				cv.polylines(frame, [polygon], True, (0, 255, 0), 2)
 
 			if data != "":
 				numeric = "numeric" if data.isnumeric() else "NOT numeric"
@@ -38,12 +36,12 @@ def main():
 					print(f"QR: {data!r} ({numeric})")
 					last_printed = data
 				corner = np.intp(points).reshape(-1, 2)[0] if points is not None else (10, 30)
-				cv.putText(view, data, (int(corner[0]), int(corner[1]) - 10),
+				cv.putText(frame, data, (int(corner[0]), int(corner[1]) - 10),
 					cv.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
 			else:
 				last_printed = None
 
-			cv.imshow(WINDOW_NAME, view)
+			cv.imshow(WINDOW_NAME, frame)
 			if (cv.waitKey(1) & 0xFF) == ord("q"):
 				break
 	except KeyboardInterrupt:
