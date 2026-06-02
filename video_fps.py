@@ -26,6 +26,9 @@ def main():
     parser.add_argument("width", type=int, help="capture width in pixels")
     parser.add_argument("height", type=int, help="capture height in pixels")
     parser.add_argument("--camera", type=int, default=0, help="camera index (default: 0)")
+    parser.add_argument("--fps", type=float, default=0.0,
+                        help="force a max framerate (0 = camera default; e.g. 60 lifts the "
+                             "low-light ~15fps auto-exposure cap, at the cost of a darker image)")
     args = parser.parse_args()
 
     picam = Picamera2(camera_num=args.camera)
@@ -33,6 +36,11 @@ def main():
         main={"format": "RGB888", "size": (args.width, args.height)},
     ))
     picam.start()
+
+    if args.fps > 0:
+        # Cap the frame duration so auto-exposure can't slow the framerate down.
+        duration_us = int(1_000_000 / args.fps)
+        picam.set_controls({"FrameDurationLimits": (duration_us, duration_us)})
 
     # The pipeline may adjust the size; report what we actually got.
     actual_w, actual_h = picam.camera_configuration()["main"]["size"]
@@ -43,7 +51,12 @@ def main():
     previous = time.monotonic()
     try:
         while True:
-            frame = picam.capture_array()
+            # capture_request() gives the frame and its metadata together, so
+            # the exposure time matches the frame we display.
+            request = picam.capture_request()
+            frame = request.make_array("main")
+            exposure_us = request.get_metadata().get("ExposureTime", 0)
+            request.release()
 
             now = time.monotonic()
             elapsed = now - previous
@@ -54,6 +67,8 @@ def main():
                 fps = instantaneous if fps == 0.0 else 0.9 * fps + 0.1 * instantaneous
 
             cv.putText(frame, f"{fps:5.1f} FPS", (10, 35),
+                       cv.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
+            cv.putText(frame, f"{exposure_us / 1000:5.1f} ms exp", (10, 70),
                        cv.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
             cv.imshow("video_fps", frame)
             if (cv.waitKey(1) & 0xFF) == ord("q"):
