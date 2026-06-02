@@ -1,17 +1,4 @@
 """
-modbus_gate_test.py — exercise the PLC gate interface over Modbus TCP.
-
-Sends a series of "packages" to the PLC using the same contract as
-package_sorter.py and watches the handshake:
-
-	MI12  REG_GATE             gate number: 0 = discard, 1 / 2 = real gates
-	MB0   COIL_PACKAGE_ARRIVED  set to 1 here; the PLC clears it to 0 once the
-	                            package has gone through.
-
-It walks through gate 1, gate 2, and an INVALID gate so you can confirm the
-ladder routes the two real gates and handles an out-of-range value sanely.
-You press Enter before each one. Press Ctrl-C to quit.
-
 Dependencies: pymodbus
 """
 
@@ -27,7 +14,7 @@ REG_GATE: int = 12               # MI12
 COIL_PACKAGE_ARRIVED: int = 0    # MB0
 
 PACKAGE_CLEAR_TIMEOUT_S: float = 30.0
-INVALID_GATE: int = 9            # not a configured gate — should not actuate 1/2
+INVALID_GATE: int = 3
 
 # (gate number, human label) sequence to send
 TEST_SEQUENCE = [
