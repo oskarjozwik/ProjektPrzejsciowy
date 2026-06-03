@@ -41,7 +41,7 @@ def main():
 		while True:
 			raw = read_average(sensor, SAMPLES_PER_READING)
 			corrected = raw - zero_offset
-            gram = raw / 408
+			gram = raw / 408
             print(f"raw: {raw:12.0f}   corrected: {corrected:12.0f}  grams: {gram:.2f"})
 			time.sleep(SAMPLE_PERIOD_S)
 	except KeyboardInterrupt:
