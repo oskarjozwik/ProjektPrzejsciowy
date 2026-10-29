@@ -3,6 +3,13 @@ import time
 import socket
 from gpiozero import DigitalOutputDevice
 
+def is_num(value):
+	try:
+		int(value)
+		return True
+	except ValueError:
+		return False
+
 if len(sys.argv) != 6:
 	print(
 		'Required arguments: <stepper_coil_1_gpio_pin> <stepper_coil_2_gpio_pin> <stepper_coil_3_gpio_pin> <stepper_coil_4_gpio_pin> <comm_port>'
@@ -12,23 +19,27 @@ if len(sys.argv) != 6:
 stepper_coil_pins = []
 try:
 	for arg in sys.argv[1:5]:
-		try:
-			pin_num = int(arg)
-		except:
+		if not is_num(arg):
 			print(f'{arg} is not a valid pin number.')
 			sys.exit()
-		stepper_coil_pins.append(DigitalOutputDevice(int(arg)))
+		
+		pin_num = int(arg)
+		stepper_coil_pins.append(DigitalOutputDevice(pin_num))
 	
-	comm_port = None
-	try:
-		comm_port = int(sys.argv[5])
-	except:
+	if not is_num(sys.argv[5]):
 		print(f'{sys.argv[5]} is not a valid port number.')
 		sys.exit()
 	
+	comm_port = int(sys.argv[5])
 	sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-	sock.bind(('127.0.0.1', comm_port))
+	try:
+		sock.bind(('127.0.0.1', comm_port))
+	except socket.error as e:
+		print(f'Port {comm_port} is busy.')
+		raise
 	sock.setblocking(False)
+	
+	print(f'Driver active. Listening on port {comm_port}')
 	
 	speed = 250
 	target_pos = 0
@@ -43,27 +54,22 @@ try:
 				data = data.split()
 				if len(data) != 2:
 					print('Invalid command format received.')
-				elif data[0] == 'target':
-					try:
-						target_pos = int(data[1])
-						print(f'New target pos: {target_pos}')
-					except:
-						print('[target] command - invalid parameter received.')
+					continue
+				if not is_num(data[1]):
+					print('Invalid parameter value received.')
+					continue
+					
+				if data[0] == 'target':
+					target_pos = int(data[1])
+					print(f'New target pos: {target_pos}')
 				elif data[0] == 'current':
-					try:
-						current_pos = int(data[1])
-						print(f'New current pos: {current_pos}')
-					except:
-						print('[current] command - invalid parameter received.')
+					current_pos = int(data[1])
+					print(f'New current pos: {current_pos}')
 				elif data[0] == 'speed':
-					try:
-						speed = int(data[1])
-						print(f'New speed: {speed}')
-					except:
-						print('[speed] command - invalid parameter received.')
+					speed = int(data[1])
+					print(f'New speed: {speed}')
 				else:
 					print('Unknown command received.')
-				
 		except BlockingIOError:
 			pass
 		
