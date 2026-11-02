@@ -1,0 +1,3 @@
+# gate = lokalizacja (mapy gogogle przyjmą praktycznie wszystko)
+1 = Warszawa, Poland
+2 = Berlin, Germany
