@@ -5,10 +5,12 @@ from gpiozero import DigitalOutputDevice
 
 
 class Mode:
-	class Extend:
+	class Right:
 		pass
-	class Retract:
+	
+	class Left:
 		pass
+
 
 def is_num(value):
 	try:
@@ -20,7 +22,7 @@ def is_num(value):
 
 if len(sys.argv) != 5:
 	print(
-		'Required arguments: <dc_motor_extend_pin> <dc_motor_retract_pin> <input_port> <output_port>'
+		'Required arguments: <dc_motor_right_pin> <dc_motor_left_pin> <input_port> <output_port>'
 	)
 	sys.exit()
 
@@ -41,15 +43,16 @@ output_port = int(sys.argv[4])
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 try:
 	sock.bind(('127.0.0.1', input_port))
-except socket.error as e:
+except socket.error:
 	print(f'Port {input_port} is busy.')
 	sys.exit()
+sock.connect(('127.0.0.1', output_port))
 sock.setblocking(False)
 
 try:
 	dc_motor_pins = {
-		Mode.Extend: DigitalOutputDevice(int(sys.argv[1])),
-		Mode.Retract: DigitalOutputDevice(int(sys.argv[2]))
+		Mode.Right: DigitalOutputDevice(int(sys.argv[1])),
+		Mode.Left: DigitalOutputDevice(int(sys.argv[2]))
 	}
 except:
 	print('Pin is busy.')
@@ -75,22 +78,22 @@ try:
 					print('Invalid parameter value received.')
 					continue
 				
-				if data[0] == 'extend':
+				if data[0] == 'right':
 					if mode is not None:
-						dc_motor_pins[Mode.Retract].off()
+						dc_motor_pins[Mode.Left].off()
 						print('Request cancelled.')
-					mode = Mode.Extend
-					dc_motor_pins[Mode.Extend].on()
+					mode = Mode.Right
+					dc_motor_pins[Mode.Right].on()
 					remaining_time = int(data[1])
-					print(f'New extend command: {remaining_time}ms')
-				elif data[0] == 'retract':
+					print(f'New right command: {remaining_time}ms')
+				elif data[0] == 'left':
 					if mode is not None:
-						dc_motor_pins[Mode.Extend].off()
+						dc_motor_pins[Mode.Right].off()
 						print('Request cancelled.')
-					mode = Mode.Retract
-					dc_motor_pins[Mode.Retract].on()
+					mode = Mode.Left
+					dc_motor_pins[Mode.Left].on()
 					remaining_time = int(data[1])
-					print(f'New retract command: {remaining_time}ms')
+					print(f'New left command: {remaining_time}ms')
 				else:
 					print('Unknown command received.')
 		except BlockingIOError:
@@ -106,8 +109,8 @@ try:
 			dc_motor_pins[mode].off()
 			mode = None
 			print('Request completed.')
-			sock.sendto(b'done', ('127.0.0.1', output_port))
-		
+			sock.send(b'done')
+
 except:
 	for pin in dc_motor_pins.values():
 		pin.close()

@@ -1,3 +1,20 @@
-sraken 69
-pierdaken 512
-sraczken -67
+rack_h1 100
+rack_h2 300
+rack_h3 500
+rack_h4 700
+
+rack_v1 50
+rack_v1_lifted 60
+rack_v2 200
+rack_v2_lifted 210
+rack_v3 350
+rack_v3_lifted 360
+
+plate_h 40
+plate_h_before_push 80
+plate_h_after_push 0
+plate_v 100
+plate_v_lifted 110
+
+extd_max 500
+grip_max 300

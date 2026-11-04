@@ -11,12 +11,13 @@ def is_num(value):
 	except ValueError:
 		return False
 
+
 if len(sys.argv) != 7:
 	print(
 		'Required arguments: <stepper_coil_1_pin> <stepper_coil_2_pin> <stepper_coil_3_pin> <stepper_coil_4_pin> <input_port> <output_port>'
 	)
 	sys.exit()
-	
+
 for arg in sys.argv[1:5]:
 	if not is_num(arg):
 		print(f'{arg} is not a valid pin number.')
@@ -34,9 +35,10 @@ output_port = int(sys.argv[6])
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 try:
 	sock.bind(('127.0.0.1', input_port))
-except socket.error as e:
+except socket.error:
 	print(f'Port {input_port} is busy.')
 	sys.exit()
+sock.connect(('127.0.0.1', output_port))
 sock.setblocking(False)
 
 stepper_coil_pins = []
@@ -67,7 +69,7 @@ try:
 				if not is_num(data[1]):
 					print('Invalid parameter value received.')
 					continue
-					
+				
 				if data[0] == 'target':
 					target_pos = int(data[1])
 					print(f'New target pos: {target_pos}')
@@ -90,7 +92,7 @@ try:
 			current_pos += 1
 			if target_pos == current_pos:
 				print('Target pos reached.')
-				sock.sendto(b'done', ('127.0.0.1', output_port))
+				sock.send(b'done')
 		elif target_pos < current_pos:
 			stepper_coil_pins[active_coil_idx].off()
 			active_coil_idx -= 1
@@ -99,10 +101,10 @@ try:
 			current_pos -= 1
 			if target_pos == current_pos:
 				print('Target pos reached.')
-				sock.sendto(b'done', ('127.0.0.1', output_port))
+				sock.send(b'done')
 		
 		time.sleep(1 / speed)
-	
+
 except:
 	for pin in stepper_coil_pins:
 		pin.close()
