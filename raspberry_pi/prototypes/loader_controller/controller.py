@@ -136,7 +136,9 @@ def push_from_plate():
 
 def go_to_zero():
 	_send_command(Axis.Long, 'target', 0)
+	_send_command(Axis.Long, 'current', 99999)
 	_send_command(Axis.Vert, 'target', 0)
+	_send_command(Axis.Vert, 'current', 99999)
 	_wait_for_completion(Axis.Long)
 	_wait_for_completion(Axis.Vert)
 
