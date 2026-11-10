@@ -64,9 +64,10 @@ class FileWatcher:
 
 
 class ControllerPanel(wx.Panel):
-	def __init__(self, parent, onDeleteCallback):
+	def __init__(self, parent, onDeleteCallback, getTargetIpCallback):
 		super().__init__(parent, style = wx.SIMPLE_BORDER)
 		self.onDeleteCallback = onDeleteCallback
+		self.getTargetIpCallback = getTargetIpCallback
 		self.panel_modes = []
 		self.stepper_controls = []
 		self.dcControl = None
@@ -221,7 +222,7 @@ class ControllerPanel(wx.Panel):
 		sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 		sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 		try:
-			sock.bind(('127.0.0.1', port))
+			sock.bind(('0.0.0.0', port))
 			sock.settimeout(1.0)
 		except Exception:
 			return
@@ -402,6 +403,8 @@ class ControllerPanel(wx.Panel):
 			self.statusTextBox.SetValue(f'{port_val} is not a valid port number.')
 			return
 		
+		target_ip = self.getTargetIpCallback() if self.getTargetIpCallback else '127.0.0.1'
+		
 		if is_predefined:
 			if isinstance(control, wx.Choice):
 				parameter = control.GetStringSelection()
@@ -431,9 +434,9 @@ class ControllerPanel(wx.Panel):
 		full_command = f'{command_name} {parameter}'
 		try:
 			sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-			sock.sendto(full_command.encode(), ('127.0.0.1', comm_port))
+			sock.sendto(full_command.encode(), (target_ip, comm_port))
 			sock.close()
-			self.statusTextBox.SetValue(f'Command "{full_command}" sent.')
+			self.statusTextBox.SetValue(f'Command "{full_command}" sent to {target_ip}:{comm_port}.')
 		except Exception as e:
 			self.statusTextBox.SetValue(f'Socket error: {e}')
 	
@@ -462,9 +465,20 @@ class ExampleFrame(wx.Frame):
 		main_panel = wx.Panel(parent = self)
 		main_vbox = wx.BoxSizer(orient = wx.VERTICAL)
 		
+		# Top horizontal control sizer for buttons and IP textbox
+		top_controls_sizer = wx.BoxSizer(orient = wx.HORIZONTAL)
+		
 		self.addPanelButton = wx.Button(parent = main_panel, label = 'New panel')
-		main_vbox.Add(self.addPanelButton, flag = wx.ALL, border = 10)
 		self.addPanelButton.Bind(event = wx.EVT_BUTTON, handler = self.OnAddPanelButtonClick)
+		top_controls_sizer.Add(self.addPanelButton, flag = wx.ALIGN_CENTER_VERTICAL | wx.ALL, border = 5)
+		
+		ip_label = wx.StaticText(parent = main_panel, label = 'Raspberry Pi IP:')
+		top_controls_sizer.Add(ip_label, flag = wx.ALIGN_CENTER_VERTICAL | wx.ALL, border = 5)
+		
+		self.ipTextbox = wx.TextCtrl(parent = main_panel, value = '127.0.0.1')
+		top_controls_sizer.Add(self.ipTextbox, proportion = 0, flag = wx.ALIGN_CENTER_VERTICAL | wx.ALL, border = 5)
+		
+		main_vbox.Add(top_controls_sizer, flag = wx.EXPAND | wx.ALL, border = 5)
 		
 		# Scrolled window container for controller panels
 		self.scrolledWindow = wx.ScrolledWindow(parent = main_panel, style = wx.VSCROLL)
@@ -484,12 +498,16 @@ class ExampleFrame(wx.Frame):
 		self.file_watcher.start_watching(self)
 		
 		self.SetTitle("Manual controller")
-		self.SetSize((500, 450))
-		self.SetMinSize((300, 150))
+		self.SetSize((550, 450))
+		self.SetMinSize((350, 150))
 		self.Centre()
 		
 		# Bind resize event to dynamically adjust columns
 		self.Bind(wx.EVT_SIZE, self.OnFrameResize)
+	
+	def GetTargetIp(self):
+		ip = self.ipTextbox.GetValue().strip()
+		return ip if ip else '127.0.0.1'
 	
 	def OnFrameResize(self, event):
 		self.LayoutColumns()
@@ -518,7 +536,11 @@ class ExampleFrame(wx.Frame):
 			self.scrolledWindow.FitInside()
 	
 	def OnAddPanelButtonClick(self, event):
-		newPanel = ControllerPanel(parent = self.scrolledWindow, onDeleteCallback = self.RemovePanel)
+		newPanel = ControllerPanel(
+			parent = self.scrolledWindow,
+			onDeleteCallback = self.RemovePanel,
+			getTargetIpCallback = self.GetTargetIp
+		)
 		self.controllers.append(newPanel)
 		self.panels_grid.Add(newPanel, proportion = 0, flag = wx.ALL, border = 5)
 		self.LayoutColumns()

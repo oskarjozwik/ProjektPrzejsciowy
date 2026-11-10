@@ -40,9 +40,11 @@ if not is_num(sys.argv[4]):
 
 input_port = int(sys.argv[3])
 output_port = int(sys.argv[4])
+
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 try:
-	sock.bind(('127.0.0.1', input_port))
+	sock.bind(('0.0.0.0', input_port))
 except socket.error:
 	print(f'Port {input_port} is busy.')
 	sys.exit()
@@ -63,12 +65,15 @@ try:
 	
 	remaining_time = 0
 	mode = None
+	client_address = None
 	
 	prev_time = int(time.time() * 1000)
 	while True:
 		try:
 			while True:
 				data, addr = sock.recvfrom(1024)
+				client_address = (addr[0], output_port)
+				
 				data = data.decode()
 				data = data.split()
 				if len(data) != 2:
@@ -109,7 +114,8 @@ try:
 			dc_motor_pins[mode].off()
 			mode = None
 			print('Request completed.')
-			sock.send(b'done')
+			if client_address:
+				sock.sendto(b'done', client_address)
 
 except:
 	for pin in dc_motor_pins.values():

@@ -32,13 +32,14 @@ if not is_num(sys.argv[6]):
 
 input_port = int(sys.argv[5])
 output_port = int(sys.argv[6])
+
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 try:
-	sock.bind(('127.0.0.1', input_port))
+	sock.bind(('0.0.0.0', input_port))
 except socket.error:
 	print(f'Port {input_port} is busy.')
 	sys.exit()
-sock.connect(('127.0.0.1', output_port))
 sock.setblocking(False)
 
 stepper_coil_pins = []
@@ -56,11 +57,14 @@ try:
 	target_pos = 0
 	current_pos = 0
 	active_coil_idx = 0
+	client_address = None
 	
 	while True:
 		try:
 			while True:
 				data, addr = sock.recvfrom(1024)
+				client_address = (addr[0], output_port)
+				
 				data = data.decode()
 				data = data.split()
 				if len(data) != 2:
@@ -92,7 +96,8 @@ try:
 			current_pos += 1
 			if target_pos == current_pos:
 				print('Target pos reached.')
-				sock.send(b'done')
+				if client_address:
+					sock.sendto(b'done', client_address)
 		elif target_pos < current_pos:
 			stepper_coil_pins[active_coil_idx].off()
 			active_coil_idx -= 1
@@ -101,7 +106,8 @@ try:
 			current_pos -= 1
 			if target_pos == current_pos:
 				print('Target pos reached.')
-				sock.send(b'done')
+				if client_address:
+					sock.sendto(b'done', client_address)
 		
 		time.sleep(1 / speed)
 
