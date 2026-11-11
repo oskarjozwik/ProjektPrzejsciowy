@@ -48,7 +48,6 @@ try:
 except socket.error:
 	print(f'Port {input_port} is busy.')
 	sys.exit()
-sock.connect(('127.0.0.1', output_port))
 sock.setblocking(False)
 
 try:
