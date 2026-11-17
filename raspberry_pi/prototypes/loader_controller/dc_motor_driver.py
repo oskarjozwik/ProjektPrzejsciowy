@@ -98,6 +98,11 @@ try:
 					dc_motor_pins[Mode.Left].on()
 					remaining_time = int(data[1])
 					print(f'New left command: {remaining_time}ms')
+				elif data[0] == 'info':
+					mode_name = mode.__name__ if mode is not None else 'None'
+					info = f'{mode_name} {remaining_time}'
+					sock.sendto(info.encode(), client_address)
+					print(f'Info sent: {info}')
 				else:
 					print('Unknown command received.')
 		except BlockingIOError:

@@ -1,7 +1,7 @@
-import wx
+import os
 import socket
 import threading
-import os
+import wx
 
 
 class FileWatcher:
@@ -71,6 +71,7 @@ class ControllerPanel(wx.Panel):
 		self.panel_modes = []
 		self.stepper_controls = []
 		self.dcControl = None
+		self.info_textboxes = []
 		self.listener_running = False
 		self.listener_thread = None
 		self.listener_socket = None
@@ -105,8 +106,8 @@ class ControllerPanel(wx.Panel):
 		
 		self.responseInputPort = None
 		self.responsePortTextbox = wx.SpinCtrl(parent = self, min = 0, max = 65535, initial = 6005)
+		# Bound only to EVT_SPINCTRL to prevent keystroke restart storms
 		self.responsePortTextbox.Bind(wx.EVT_SPINCTRL, self.OnResponsePortChanged)
-		self.responsePortTextbox.Bind(wx.EVT_TEXT, self.OnResponsePortChanged)
 		response_sizer.Add(
 			self.responsePortTextbox,
 			proportion = 0,
@@ -156,11 +157,24 @@ class ControllerPanel(wx.Panel):
 		
 		main_vbox.Add(status_sizer, proportion = 0, flag = wx.EXPAND | wx.ALL, border = 2)
 		
+		# Additional row below status bar containing 'Query for info' button and motor-dependent info fields
+		info_sizer = wx.BoxSizer(orient = wx.HORIZONTAL)
+		self.queryInfoButton = wx.Button(parent = self, label = 'Query for info')
+		self.queryInfoButton.Bind(wx.EVT_BUTTON, self.OnQueryInfo)
+		info_sizer.Add(self.queryInfoButton, proportion = 0, flag = wx.ALIGN_CENTER_VERTICAL | wx.ALL, border = 5)
+		
+		self.info_content_sizer = wx.BoxSizer(orient = wx.HORIZONTAL)
+		info_sizer.Add(self.info_content_sizer, proportion = 0, flag = wx.ALIGN_CENTER_VERTICAL | wx.ALL, border = 2)
+		
+		info_sizer.AddStretchSpacer(prop = 1)
+		main_vbox.Add(info_sizer, proportion = 0, flag = wx.EXPAND | wx.ALL, border = 2)
+		
 		self.SetSizer(main_vbox)
 		
-		# Apply initial background color and lower section content
+		# Apply initial background color, lower section content, and info section content
 		self.UpdateBackgroundColor()
 		self.UpdateLowerSection()
+		self.UpdateInfoSection()
 		
 		# Start listening for incoming responses on the response port
 		self.StartResponseListener()
@@ -193,6 +207,7 @@ class ControllerPanel(wx.Panel):
 		self.panel_modes = []  # Reset modes when switching motor type
 		self.UpdateBackgroundColor()
 		self.UpdateLowerSection()
+		self.UpdateInfoSection()
 	
 	def OnResponsePortChanged(self, event):
 		self.StartResponseListener()
@@ -224,7 +239,8 @@ class ControllerPanel(wx.Panel):
 		try:
 			sock.bind(('0.0.0.0', port))
 			sock.settimeout(1.0)
-		except Exception:
+		except Exception as e:
+			print(f"Listener bind error on port {port}: {e}")
 			return
 		
 		self.listener_socket = sock
@@ -232,11 +248,19 @@ class ControllerPanel(wx.Panel):
 		while self.listener_running:
 			try:
 				data, addr = sock.recvfrom(1024)
-				message = data.decode('utf-8', errors = 'ignore')
-				wx.CallAfter(self.SafeSetStatus, message)
+				message = data.decode('utf-8', errors = 'ignore').strip('\x00 \t\n\r')
+				print(f"Received UDP from {addr} on port {port}: {repr(message)}")
+				
+				if message == 'done':
+					wx.CallAfter(self.SafeSetStatus, message)
+				else:
+					wx.CallAfter(self.HandleInfoResponse, message)
 			except socket.timeout:
 				continue
-			except Exception:
+			except Exception as e:
+				# Avoid printing error if socket was intentionally closed during shutdown/port change
+				if self.listener_running:
+					print(f"Listener loop error: {e}")
 				break
 		
 		try:
@@ -251,6 +275,22 @@ class ControllerPanel(wx.Panel):
 		except RuntimeError:
 			pass
 	
+	def HandleInfoResponse(self, message):
+		try:
+			parts = message.split()
+			selection = self.motorChoice.GetStringSelection()
+			
+			if selection == "Stepper" and len(parts) >= 3:
+				for i in range(3):
+					if i < len(self.info_textboxes):
+						self.info_textboxes[i].SetValue(str(parts[i]))
+			elif selection == "DC motor" and len(parts) >= 2:
+				for i in range(2):
+					if i < len(self.info_textboxes):
+						self.info_textboxes[i].SetValue(str(parts[i]))
+		except Exception as e:
+			print(f"Error handling info response: {e}")
+	
 	def UpdateBackgroundColor(self):
 		selection = self.motorChoice.GetStringSelection()
 		if selection == "Stepper":
@@ -260,6 +300,35 @@ class ControllerPanel(wx.Panel):
 			# Slightly orange
 			self.SetBackgroundColour(wx.Colour(255, 240, 230))
 		self.Refresh()
+	
+	def UpdateInfoSection(self):
+		self.info_content_sizer.Clear(delete_windows = True)
+		self.info_textboxes = []
+		selection = self.motorChoice.GetStringSelection()
+		
+		if selection == "Stepper":
+			fields = [("Target", 60), ("Current", 60), ("Speed", 60)]
+		else:
+			fields = [("Mode", 60), ("Time", 60)]
+		
+		for label_text, width in fields:
+			lbl = wx.StaticText(parent = self, label = label_text)
+			self.info_content_sizer.Add(
+				lbl,
+				proportion = 0,
+				flag = wx.ALIGN_CENTER_VERTICAL | wx.LEFT | wx.RIGHT,
+				border = 3
+			)
+			txt = wx.TextCtrl(parent = self, value = '', style = wx.TE_READONLY)
+			txt.SetMinSize((width, -1))
+			self.info_textboxes.append(txt)
+			self.info_content_sizer.Add(txt, proportion = 0, flag = wx.ALIGN_CENTER_VERTICAL | wx.RIGHT, border = 5)
+		
+		self.info_content_sizer.Layout()
+		self.Layout()
+		top_frame = self.GetTopLevelParent()
+		if top_frame:
+			top_frame.Layout()
 	
 	def UpdateLowerSection(self):
 		# Clear existing items from lower_vbox and destroy their windows
@@ -432,13 +501,37 @@ class ControllerPanel(wx.Panel):
 			parameter = str(control.GetValue()).strip()
 		
 		full_command = f'{command_name} {parameter}'
+		
+		# Send using the existing listener socket instead of creating a new one
+		if self.listener_socket:
+			try:
+				self.listener_socket.sendto(full_command.encode(), (target_ip, comm_port))
+				self.statusTextBox.SetValue(f'Command "{full_command}" sent to {target_ip}:{comm_port}.')
+			except Exception as e:
+				self.statusTextBox.SetValue(f'Socket error: {e}')
+		else:
+			self.statusTextBox.SetValue('Socket error: Listener socket is not active.')
+	
+	def OnQueryInfo(self, event):
+		port_val = self.inputPortTextbox.GetValue()
 		try:
-			sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-			sock.sendto(full_command.encode(), (target_ip, comm_port))
-			sock.close()
-			self.statusTextBox.SetValue(f'Command "{full_command}" sent to {target_ip}:{comm_port}.')
-		except Exception as e:
-			self.statusTextBox.SetValue(f'Socket error: {e}')
+			comm_port = int(port_val)
+		except ValueError:
+			self.statusTextBox.SetValue(f'{port_val} is not a valid port number.')
+			return
+		
+		target_ip = self.getTargetIpCallback() if self.getTargetIpCallback else '127.0.0.1'
+		full_command = 'info 0'
+		
+		# Send using the existing listener socket instead of creating a new one
+		if self.listener_socket:
+			try:
+				self.listener_socket.sendto(full_command.encode(), (target_ip, comm_port))
+				self.statusTextBox.SetValue(f'Command "{full_command}" sent to {target_ip}:{comm_port}.')
+			except Exception as e:
+				self.statusTextBox.SetValue(f'Socket error: {e}')
+		else:
+			self.statusTextBox.SetValue('Socket error: Listener socket is not active.')
 	
 	def OnUpdateStepper(self, command_name, idx, event):
 		control = self.stepper_controls[idx]
@@ -498,7 +591,7 @@ class ExampleFrame(wx.Frame):
 		self.file_watcher.start_watching(self)
 		
 		self.SetTitle("Manual controller")
-		self.SetSize((550, 450))
+		self.SetSize((550, 480))
 		self.SetMinSize((350, 150))
 		self.Centre()
 		

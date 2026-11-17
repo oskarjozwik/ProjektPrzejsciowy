@@ -83,6 +83,10 @@ try:
 				elif data[0] == 'speed':
 					speed = int(data[1])
 					print(f'New speed: {speed}')
+				elif data[0] == 'info':
+					info = f'{target_pos} {current_pos} {speed}'
+					sock.sendto(info.encode(), client_address)
+					print(f'Info sent: {info}')
 				else:
 					print('Unknown command received.')
 		except BlockingIOError:
